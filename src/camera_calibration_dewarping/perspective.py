@@ -257,8 +257,13 @@ def matches_k03_baseline(
     source_paths = [Path(path) for path in inputs]
     if len(source_paths) != len(K03_BASELINE_INPUT_SHA256):
         return False
-    actual_hashes = {path.name: _sha256(path) for path in source_paths}
-    if actual_hashes != K03_BASELINE_INPUT_SHA256:
+    expected_names = tuple(K03_BASELINE_INPUT_SHA256)
+    actual_names = tuple(path.name for path in source_paths)
+    if actual_names != expected_names:
+        return False
+    actual_hashes = tuple(_sha256(path) for path in source_paths)
+    expected_hashes = tuple(K03_BASELINE_INPUT_SHA256[name] for name in expected_names)
+    if actual_hashes != expected_hashes:
         return False
 
     summary = evaluation.summary
