@@ -22,6 +22,23 @@ from numpy.typing import NDArray
 GRID_ROWS = 7
 GRID_COLUMNS = 5
 CORNER_INDICES = (0, 4, 30, 34)
+K03_BASELINE_INPUT_SHA256 = {
+    "chess_corners1.dat": "4127de6a7092c91dbc418596273c2bae15a2c71645a2ff89cdf68dec6c18e2bc",
+    "chess_corners2.dat": "c2fc60138de77156f65b6744a5c25d81b3a008c4e0c9572303a9b779904642ae",
+    "chess_corners3.dat": "87f051c3b957c216b7d5afec6686aaf6360027c9eae22e962172fe6937bb3e07",
+    "chess_corners4.dat": "81764567944db2565ef30df7a60a96a9c7e6b3caa96c8203c3c5254b30666de0",
+    "chess_corners5.dat": "49295181c3a53c31dbb1d43f7b8a313eb241e0d39bd02a8e2b37b5513ead005b",
+    "chess_corners6.dat": "4666479032a07de8f296aecd3f2322c419b001b3cbca5755644f5b09e96e02db",
+    "chess_corners7.dat": "3dddb152c3d407cf24d7e4eedb53222fd1e1801cf1677c4e1ef9f31778512402",
+}
+K03_BASELINE_SUMMARY = {
+    "views": 7,
+    "n_test": 217,
+    "rms_px": 0.5811008373426997,
+    "p95_px": 1.334420354253144,
+    "max_px": 1.7804176308511281,
+}
+K03_METRIC_TOLERANCE = 1e-10
 
 
 class PerspectiveInputError(ValueError):
@@ -232,6 +249,34 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def matches_k03_baseline(
+    evaluation: PerspectiveEvaluation, inputs: Sequence[str | Path]
+) -> bool:
+    """Return true only for the locked K03 inputs and reported metrics."""
+
+    source_paths = [Path(path) for path in inputs]
+    if len(source_paths) != len(K03_BASELINE_INPUT_SHA256):
+        return False
+    actual_hashes = {path.name: _sha256(path) for path in source_paths}
+    if actual_hashes != K03_BASELINE_INPUT_SHA256:
+        return False
+
+    summary = evaluation.summary
+    if summary.views != K03_BASELINE_SUMMARY["views"]:
+        return False
+    if summary.n_test != K03_BASELINE_SUMMARY["n_test"]:
+        return False
+    return all(
+        math.isclose(
+            getattr(summary, field),
+            float(K03_BASELINE_SUMMARY[field]),
+            rel_tol=0.0,
+            abs_tol=K03_METRIC_TOLERANCE,
+        )
+        for field in ("rms_px", "p95_px", "max_px")
+    )
+
+
 def write_artifacts(
     evaluation: PerspectiveEvaluation,
     inputs: Sequence[str | Path],
@@ -250,10 +295,11 @@ def write_artifacts(
         writer.writerows(asdict(row) for row in evaluation.view_metrics)
 
     source_paths = [Path(path) for path in inputs]
+    baseline_matches = matches_k03_baseline(evaluation, source_paths)
     payload = {
         "schema_version": "1.0",
         "test_id": "U01-T1",
-        "status": "TEKRARLANDI",
+        "status": "TEKRARLANDI" if baseline_matches else "BEKLİYOR",
         "procedure": {
             "grid": {"rows": GRID_ROWS, "columns": GRID_COLUMNS},
             "fit_point_indices": list(CORNER_INDICES),
@@ -264,6 +310,11 @@ def write_artifacts(
         ],
         "perspective": asdict(evaluation.summary),
         "views": [asdict(row) for row in evaluation.view_metrics],
+        "baseline": {
+            "profile": "K03-2026-11-15",
+            "matched": baseline_matches,
+            "metric_absolute_tolerance": K03_METRIC_TOLERANCE,
+        },
         "claim_scope": {
             "measured": "pixel-domain perspective consistency on held-out target points",
             "not_measured": [

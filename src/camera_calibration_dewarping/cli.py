@@ -7,7 +7,12 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from .perspective import PerspectiveInputError, evaluate_files, write_artifacts
+from .perspective import (
+    PerspectiveInputError,
+    evaluate_files,
+    matches_k03_baseline,
+    write_artifacts,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -39,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(
             {
                 "test_id": "U01-T1",
-                "status": "TEKRARLANDI",
+                "status": "TEKRARLANDI" if matches_k03_baseline(evaluation, inputs) else "BEKLİYOR",
                 "perspective": asdict(evaluation.summary),
                 "artifacts": [str(csv_path), str(json_path)],
             },

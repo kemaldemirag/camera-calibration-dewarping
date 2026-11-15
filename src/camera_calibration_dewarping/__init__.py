@@ -7,6 +7,7 @@ from .perspective import (
     ViewMetrics,
     evaluate_files,
     evaluate_points,
+    matches_k03_baseline,
     parse_opencv_points,
     write_artifacts,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "ViewMetrics",
     "evaluate_files",
     "evaluate_points",
+    "matches_k03_baseline",
     "parse_opencv_points",
     "write_artifacts",
 ]

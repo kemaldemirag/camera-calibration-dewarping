@@ -73,7 +73,8 @@ class PerspectiveUnitTests(unittest.TestCase):
         np.testing.assert_allclose(parsed, points)
         self.assertTrue(csv_path.name == "perspektif.csv")
         self.assertEqual(payload["test_id"], "U01-T1")
-        self.assertEqual(payload["status"], "TEKRARLANDI")
+        self.assertEqual(payload["status"], "BEKLİYOR")
+        self.assertFalse(payload["baseline"]["matched"])
         self.assertEqual(len(payload["inputs"][0]["sha256"]), 64)
         self.assertIn("millimetre accuracy", payload["claim_scope"]["not_measured"])
 

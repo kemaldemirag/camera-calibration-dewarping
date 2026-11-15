@@ -3,14 +3,21 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 WORKSPACE = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPOSITORY / "src"))
+TEST_TEMP = REPOSITORY / ".test-tmp"
+TEST_TEMP.mkdir(exist_ok=True)
 
-from camera_calibration_dewarping.perspective import evaluate_files  # noqa: E402
+from camera_calibration_dewarping.perspective import (  # noqa: E402
+    evaluate_files,
+    matches_k03_baseline,
+    write_artifacts,
+)
 
 
 class PerspectiveGoldenTests(unittest.TestCase):
@@ -56,6 +63,15 @@ class PerspectiveGoldenTests(unittest.TestCase):
         archived = json.loads((self.package / "sonuclar" / "ozet.json").read_text(encoding="utf-8"))
         self.assertEqual(result.summary.n_test, archived["perspective"]["n_test"])
         self.assertAlmostEqual(result.summary.rms_px, archived["perspective"]["rms_px"], places=12)
+
+    def test_only_locked_inputs_receive_reproduced_status(self) -> None:
+        result = evaluate_files(self.inputs)
+        self.assertTrue(matches_k03_baseline(result, self.inputs))
+        with tempfile.TemporaryDirectory(dir=TEST_TEMP) as directory:
+            _, summary_path = write_artifacts(result, self.inputs, directory)
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["status"], "TEKRARLANDI")
+        self.assertTrue(payload["baseline"]["matched"])
 
 
 if __name__ == "__main__":
